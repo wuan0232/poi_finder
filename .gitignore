@@ -1,0 +1,12 @@
+venv/
+.env
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.vscode/
+poi_finder.db
+poi_finder.db-shm
+poi_finder.db-wal
+backups/
+*.xlsx

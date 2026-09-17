@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>POI Finder · 城市机构采集台</title>
+  <style>
+    :root {
+      --ink: #17324d; --muted: #66798a; --paper: #f4f7f8; --panel: #ffffff;
+      --line: #d9e2e7; --signal: #e35b3f; --map: #2b7a78;
+      --shadow: 0 18px 50px rgba(23, 50, 77, .09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; color: var(--ink);
+      background: linear-gradient(rgba(43, 122, 120, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(43, 122, 120, .055) 1px, transparent 1px), var(--paper);
+      background-size: 30px 30px; font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+    }
+    button, input { font: inherit; }
+    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
+    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    .eyebrow { color: var(--map); font: 700 12px/1.2 Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 8px 0 6px; font-family: Georgia, "Songti SC", serif; font-size: clamp(36px, 6vw, 72px); line-height: .98; letter-spacing: -.045em; }
+    .subtitle { margin: 0; color: var(--muted); }
+    .coordinate { color: var(--muted); font: 12px/1.6 Consolas, monospace; text-align: right; }
+    .workbench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
+    .card { background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+    .query { padding: 24px; position: sticky; top: 20px; }
+    .card-title { margin: 0 0 20px; font: 700 13px/1 Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    label { display: block; margin: 17px 0 7px; font-size: 13px; font-weight: 700; }
+    input[type="text"], input[type="number"] { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; color: var(--ink); background: #fbfcfc; outline: none; }
+    input:focus { border-color: var(--map); box-shadow: 0 0 0 3px rgba(43,122,120,.12); }
+    .providers { display: grid; gap: 9px; }
+    .provider { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 14px; }
+    .provider input { accent-color: var(--map); }
+    .run { width: 100%; margin-top: 24px; border: 0; border-radius: 10px; padding: 13px 16px; color: white; background: var(--ink); font-weight: 700; cursor: pointer; transition: transform .18s, background .18s; }
+    .run:hover { transform: translateY(-1px); background: var(--map); }
+    .run:disabled { opacity: .55; cursor: wait; transform: none; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.55; }
+    .output { overflow: hidden; min-height: 440px; }
+    .output-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa8b3; }
+    .dot.running { background: #e9a23b; animation: pulse 1s infinite alternate; }
+    .dot.completed { background: var(--map); }
+    .dot.failed { background: var(--signal); }
+    @keyframes pulse { to { opacity: .35; } }
+    .export { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: white; color: var(--ink); cursor: pointer; font-size: 13px; }
+    .export:disabled { opacity: .45; cursor: default; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 12px 14px; text-align: left; color: var(--muted); font: 700 11px/1.2 Consolas, monospace; letter-spacing: .06em; background: #f8fafb; position: sticky; top: 0; }
+    td { padding: 13px 14px; border-top: 1px solid #edf1f3; vertical-align: top; }
+    td:nth-child(1) { font-weight: 700; min-width: 170px; }
+    td:nth-child(3) { min-width: 260px; color: var(--muted); }
+    .source { display: inline-block; padding: 3px 7px; border-radius: 5px; color: var(--map); background: rgba(43,122,120,.1); font: 11px Consolas, monospace; }
+    .empty { display: grid; place-items: center; min-height: 350px; padding: 30px; color: var(--muted); text-align: center; }
+    .empty strong { display: block; margin-bottom: 8px; color: var(--ink); font: 28px Georgia, "Songti SC", serif; }
+    .message { margin-top: 14px; min-height: 18px; color: var(--signal); font-size: 12px; white-space: pre-wrap; }
+    @media (max-width: 800px) { header { align-items: start; } .coordinate { display: none; } .workbench { grid-template-columns: 1fr; } .query { position: static; } }
+    @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><div class="eyebrow">Urban intelligence / POI console</div><h1>城市机构采集台</h1><p class="subtitle">一次检索，汇合三家地图数据源。</p></div>
+      <div class="coordinate">31.2304° N<br>121.4737° E</div>
+    </header>
+    <section class="workbench">
+      <form class="card query" id="taskForm">
+        <h2 class="card-title">采集条件</h2>
+        <label for="city">城市</label><input id="city" type="text" value="上海市" required>
+        <label for="keywords">关键词</label><input id="keywords" type="text" value="口腔诊所,牙科" required>
+        <p class="hint">多个关键词请用中文或英文逗号分隔。</p>
+        <label>地图来源</label>
+        <div class="providers">
+          <label class="provider"><input type="checkbox" name="provider" value="amap" checked> 高德地图</label>
+          <label class="provider"><input type="checkbox" name="provider" value="baidu"> 百度地图</label>
+          <label class="provider"><input type="checkbox" name="provider" value="tencent"> 腾讯地图</label>
+        </div>
+        <label for="pages">每个关键词采集页数</label><input id="pages" type="number" value="2" min="1" max="20">
+        <button class="run" id="runButton" type="submit">开始采集</button>
+        <div class="message" id="message" role="alert"></div>
+      </form>
+      <section class="card output">
+        <div class="output-head">
+          <div class="status"><span class="dot" id="dot"></span><span id="statusText">等待创建任务</span></div>
+          <button class="export" id="exportButton" disabled>导出 Excel</button>
+        </div>
+        <div class="table-wrap" id="resultArea"><div class="empty"><div><strong>还没有采集结果</strong>填写左侧条件，创建第一条采集任务。</div></div></div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const form = document.querySelector('#taskForm');
+    const runButton = document.querySelector('#runButton');
+    const exportButton = document.querySelector('#exportButton');
+    const message = document.querySelector('#message');
+    const statusText = document.querySelector('#statusText');
+    const dot = document.querySelector('#dot');
+    const resultArea = document.querySelector('#resultArea');
+    let activeTaskId = null, timer = null;
+    const labels = { pending: '任务排队中', running: '正在采集', completed: '采集完成', failed: '采集失败' };
+    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+    function setStatus(status, total = 0) {
+      dot.className = `dot ${status || ''}`;
+      statusText.textContent = `${labels[status] || '等待创建任务'}${status === 'completed' ? ` · ${total} 条` : ''}`;
+    }
+    async function api(url, options) {
+      const response = await fetch(url, options);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '请求失败，请检查服务配置。');
+      return data;
+    }
+    function renderRows(items) {
+      if (!items.length) { resultArea.innerHTML = '<div class="empty"><div><strong>没有匹配结果</strong>可以换一个关键词或增加采集页数。</div></div>'; return; }
+      resultArea.innerHTML = `<table><thead><tr><th>机构名称</th><th>来源</th><th>地址</th><th>电话</th></tr></thead><tbody>${items.map(item => `<tr><td>${escapeHtml(item.name)}</td><td><span class="source">${escapeHtml(item.provider)}</span></td><td>${escapeHtml(item.address || '—')}</td><td>${escapeHtml(item.phone || '—')}</td></tr>`).join('')}</tbody></table>`;
+    }
+    async function pollTask() {
+      try {
+        const task = await api(`/api/tasks/${activeTaskId}`);
+        setStatus(task.status, task.total);
+        if (task.status === 'completed' || task.status === 'failed') {
+          clearInterval(timer); runButton.disabled = false; message.textContent = task.error_message || '';
+          const results = await api(`/api/tasks/${activeTaskId}/results?page_size=500`);
+          renderRows(results.items); exportButton.disabled = results.total === 0;
+        }
+      } catch (error) { clearInterval(timer); runButton.disabled = false; message.textContent = error.message; }
+    }
+    form.addEventListener('submit', async event => {
+      event.preventDefault(); clearInterval(timer); message.textContent = ''; exportButton.disabled = true; runButton.disabled = true;
+      const providers = [...document.querySelectorAll('input[name="provider"]:checked')].map(input => input.value);
+      if (!providers.length) { message.textContent = '请至少选择一个地图来源。'; runButton.disabled = false; return; }
+      const keywords = document.querySelector('#keywords').value.split(/[,，]/).map(v => v.trim()).filter(Boolean);
+      try {
+        const task = await api('/api/tasks', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ city: document.querySelector('#city').value.trim(), keywords, providers, pages: Number(document.querySelector('#pages').value) }) });
+        activeTaskId = task.id; setStatus(task.status);
+        resultArea.innerHTML = '<div class="empty"><div><strong>正在穿行城市网格</strong>结果会在采集完成后自动出现。</div></div>';
+        timer = setInterval(pollTask, 1500); pollTask();
+      } catch (error) { message.textContent = error.message; runButton.disabled = false; }
+    });
+    exportButton.addEventListener('click', () => { if (activeTaskId) window.location.href = `/api/tasks/${activeTaskId}/export`; });
+  </script>
+</body>
+</html>
