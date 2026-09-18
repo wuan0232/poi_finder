@@ -1,4 +1,5 @@
 import argparse
+import json
 import sqlite3
 import sys
 from datetime import datetime
@@ -18,7 +19,15 @@ TASK_COLUMNS = {
     "center_lat": "REAL",
 }
 
-POI_COLUMNS = {"distance_m": "INTEGER"}
+POI_COLUMNS = {
+    "distance_m": "INTEGER",
+    "products_json": "TEXT NOT NULL DEFAULT '[]'",
+    "products_verified": "INTEGER NOT NULL DEFAULT 0",
+    "product_note": "TEXT",
+    "product_updated_at": "DATETIME",
+    "email": "VARCHAR(255)",
+    "website": "VARCHAR(500)",
+}
 
 
 def backup_database(connection: sqlite3.Connection, database_path: Path) -> Path:
@@ -72,6 +81,39 @@ def ensure_unique_index(connection: sqlite3.Connection) -> None:
     )
 
 
+def backfill_contact_fields(connection: sqlite3.Connection) -> tuple[int, int, int]:
+    phone_count = email_count = website_count = 0
+    rows = connection.execute(
+        "SELECT id, phone, email, website, extra_json FROM pois WHERE extra_json IS NOT NULL"
+    ).fetchall()
+    for poi_id, phone, email, website, extra_json in rows:
+        try:
+            raw = json.loads(extra_json)
+        except (TypeError, json.JSONDecodeError):
+            continue
+        if not isinstance(raw, dict):
+            continue
+
+        def clean(value) -> str | None:
+            return value.strip() if isinstance(value, str) and value.strip() else None
+
+        new_phone = phone or clean(raw.get("tel")) or clean(raw.get("telephone"))
+        new_email = email or clean(raw.get("email"))
+        new_website = website or clean(raw.get("website")) or clean(raw.get("url"))
+        if new_phone != phone:
+            phone_count += 1
+        if new_email != email:
+            email_count += 1
+        if new_website != website:
+            website_count += 1
+        if new_phone != phone or new_email != email or new_website != website:
+            connection.execute(
+                "UPDATE pois SET phone = ?, email = ?, website = ? WHERE id = ?",
+                (new_phone, new_email, new_website, poi_id),
+            )
+    return phone_count, email_count, website_count
+
+
 def migrate(database_path: Path) -> None:
     if not database_path.exists():
         raise FileNotFoundError(f"数据库不存在：{database_path}")
@@ -83,11 +125,13 @@ def migrate(database_path: Path) -> None:
         connection.execute("PRAGMA journal_mode = WAL")
         added = add_missing_columns(connection, "tasks", TASK_COLUMNS)
         added.extend(add_missing_columns(connection, "pois", POI_COLUMNS))
+        contacts = backfill_contact_fields(connection)
         ensure_unique_index(connection)
         connection.commit()
 
     print(f"备份：{backup_path}")
     print("新增字段：" + (", ".join(added) if added else "无"))
+    print(f"联系方式回填：电话 {contacts[0]}，邮箱 {contacts[1]}，网站 {contacts[2]}")
     print("SQLite 迁移完成，WAL 和唯一索引已启用。")
 
 

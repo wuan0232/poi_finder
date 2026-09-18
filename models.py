@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
+import json
+
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -60,10 +62,37 @@ class Poi(Base):
     city: Mapped[str | None] = mapped_column(String(100))
     district: Mapped[str | None] = mapped_column(String(100))
     phone: Mapped[str | None] = mapped_column(String(100))
+    email: Mapped[str | None] = mapped_column(String(255))
+    website: Mapped[str | None] = mapped_column(String(500))
     longitude: Mapped[float | None] = mapped_column(Float)
     latitude: Mapped[float | None] = mapped_column(Float)
     distance_m: Mapped[int | None] = mapped_column(Integer)
+    products_json: Mapped[str] = mapped_column(
+        Text, nullable=False, default="[]", server_default="[]"
+    )
+    products_verified: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("0")
+    )
+    product_note: Mapped[str | None] = mapped_column(Text)
+    product_updated_at: Mapped[datetime | None] = mapped_column(DateTime)
     extra_json: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), nullable=False)
 
     task: Mapped[Task] = relationship(back_populates="pois")
+
+    @property
+    def products(self) -> list[str]:
+        try:
+            value = json.loads(self.products_json or "[]")
+        except (TypeError, json.JSONDecodeError):
+            return []
+        return value if isinstance(value, list) else []
+
+    @property
+    def contact_sources(self) -> dict[str, str]:
+        try:
+            raw = json.loads(self.extra_json or "{}")
+        except (TypeError, json.JSONDecodeError):
+            return {}
+        sources = raw.get("_contact_sources", {}) if isinstance(raw, dict) else {}
+        return sources if isinstance(sources, dict) else {}

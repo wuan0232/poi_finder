@@ -7,7 +7,8 @@ from fastapi.staticfiles import StaticFiles
 
 import models  # noqa: F401 - 注册 SQLAlchemy 表模型
 from database import Base, engine
-from routers.tasks import router as tasks_router
+from routers.tasks import pois_router, router as tasks_router
+from services.config import settings
 
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -28,6 +29,7 @@ app = FastAPI(
 )
 
 app.include_router(tasks_router)
+app.include_router(pois_router)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
@@ -39,3 +41,16 @@ def index() -> FileResponse:
 @app.get("/health", tags=["system"])
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/api/system/status", tags=["system"])
+def system_status() -> dict:
+    """Return safe capability flags only; API keys are never exposed."""
+    return {
+        "maps": {
+            "amap": bool(settings.amap_key),
+            "baidu": bool(settings.baidu_key),
+            "tencent": bool(settings.tencent_key),
+        },
+        "location_requires_https": True,
+    }

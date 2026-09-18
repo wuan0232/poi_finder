@@ -24,7 +24,10 @@ def clean_and_deduplicate(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         item["name"] = str(item.get("name") or "").strip()
         if not item["name"]:
             continue
-        for field in ("category", "address", "province", "city", "district", "phone"):
+        for field in (
+            "category", "address", "province", "city", "district", "phone",
+            "email", "website",
+        ):
             value = item.get(field)
             item[field] = str(value).strip() if value not in (None, "", []) else None
         key = _dedupe_key(item)
