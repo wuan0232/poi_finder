@@ -9,4 +9,5 @@ poi_finder.db
 poi_finder.db-shm
 poi_finder.db-wal
 backups/
+logs/
 *.xlsx

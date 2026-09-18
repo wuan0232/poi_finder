@@ -1,0 +1,20 @@
+[
+  {
+    "enabled": false,
+    "center_name": "北京协和医院",
+    "center_address": "",
+    "city": "北京市",
+    "keyword": "药店",
+    "types_code": "090601",
+    "radius_km": 3
+  },
+  {
+    "enabled": false,
+    "center_name": "上海瑞金医院",
+    "center_address": "",
+    "city": "上海市",
+    "keyword": "药店",
+    "types_code": "090601",
+    "radius_km": 3
+  }
+]
