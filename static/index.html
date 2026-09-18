@@ -3,144 +3,870 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>POI Finder · 城市机构采集台</title>
+  <meta name="theme-color" content="#142c3e">
+  <title>周边机构采集台</title>
   <style>
     :root {
-      --ink: #17324d; --muted: #66798a; --paper: #f4f7f8; --panel: #ffffff;
-      --line: #d9e2e7; --signal: #e35b3f; --map: #2b7a78;
-      --shadow: 0 18px 50px rgba(23, 50, 77, .09);
+      --ink: #142c3e;
+      --ink-soft: #526979;
+      --map: #1f7a74;
+      --map-pale: #e5f2f0;
+      --signal: #e56a4a;
+      --fog: #f3f7f7;
+      --panel: #ffffff;
+      --line: #d7e2e5;
+      --shadow: 0 18px 50px rgba(20, 44, 62, .09);
     }
     * { box-sizing: border-box; }
+    html { min-width: 320px; }
     body {
-      margin: 0; min-height: 100vh; color: var(--ink);
-      background: linear-gradient(rgba(43, 122, 120, .055) 1px, transparent 1px), linear-gradient(90deg, rgba(43, 122, 120, .055) 1px, transparent 1px), var(--paper);
-      background-size: 30px 30px; font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(rgba(31, 122, 116, .055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(31, 122, 116, .055) 1px, transparent 1px),
+        var(--fog);
+      background-size: 30px 30px;
+      font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
     }
-    button, input { font: inherit; }
-    .shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
-    header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    button, input, select, textarea { font: inherit; }
+    button, input, select, textarea, a { outline: none; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+      box-shadow: 0 0 0 3px rgba(31, 122, 116, .22);
+    }
+    .shell { width: min(1540px, calc(100% - 32px)); margin: 0 auto; padding: 30px 0 52px; }
+    .masthead { display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 28px; margin-bottom: 26px; }
     .eyebrow { color: var(--map); font: 700 12px/1.2 Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
-    h1 { margin: 8px 0 6px; font-family: Georgia, "Songti SC", serif; font-size: clamp(36px, 6vw, 72px); line-height: .98; letter-spacing: -.045em; }
-    .subtitle { margin: 0; color: var(--muted); }
-    .coordinate { color: var(--muted); font: 12px/1.6 Consolas, monospace; text-align: right; }
-    .workbench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: start; }
-    .card { background: rgba(255,255,255,.94); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
-    .query { padding: 24px; position: sticky; top: 20px; }
-    .card-title { margin: 0 0 20px; font: 700 13px/1 Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
-    label { display: block; margin: 17px 0 7px; font-size: 13px; font-weight: 700; }
-    input[type="text"], input[type="number"] { width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px; color: var(--ink); background: #fbfcfc; outline: none; }
-    input:focus { border-color: var(--map); box-shadow: 0 0 0 3px rgba(43,122,120,.12); }
-    .providers { display: grid; gap: 9px; }
-    .provider { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 14px; }
-    .provider input { accent-color: var(--map); }
-    .run { width: 100%; margin-top: 24px; border: 0; border-radius: 10px; padding: 13px 16px; color: white; background: var(--ink); font-weight: 700; cursor: pointer; transition: transform .18s, background .18s; }
+    h1 { margin: 8px 0 6px; font-family: Georgia, "Songti SC", serif; font-size: clamp(38px, 6vw, 70px); line-height: .98; letter-spacing: -.045em; }
+    .subtitle { margin: 0; color: var(--ink-soft); }
+    .range-mark { position: relative; width: 126px; height: 88px; display: grid; place-items: center; }
+    .ring { position: absolute; border: 1px solid rgba(31, 122, 116, .28); border-radius: 50%; }
+    .ring:nth-child(1) { width: 42px; height: 42px; }
+    .ring:nth-child(2) { width: 76px; height: 76px; }
+    .ring:nth-child(3) { width: 112px; height: 112px; }
+    .pin { width: 10px; height: 10px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 5px rgba(229,106,74,.16); z-index: 1; }
+    .radius-readout { position: absolute; right: 0; bottom: -9px; padding: 3px 6px; background: var(--fog); color: var(--ink-soft); font: 11px Consolas, monospace; }
+    .workbench { display: grid; grid-template-columns: 340px minmax(0, 1fr); gap: 20px; align-items: stretch; }
+    .card { background: rgba(255,255,255,.95); border: 1px solid var(--line); border-radius: 18px; box-shadow: var(--shadow); }
+    .query { align-self: stretch; padding: 24px; position: sticky; top: 18px; }
+    .card-title { margin: 0 0 6px; font: 700 13px/1 Consolas, monospace; letter-spacing: .1em; text-transform: uppercase; }
+    .card-note { margin: 0 0 20px; color: var(--ink-soft); font-size: 12px; line-height: 1.55; }
+    .config-notice { margin: -7px 0 18px; padding: 11px 12px; border: 1px solid #efb8aa; border-radius: 9px; color: #9d3e27; background: #fff3ef; font-size: 12px; line-height: 1.55; }
+    .config-notice a { color: inherit; font-weight: 700; text-underline-offset: 2px; }
+    [hidden] { display: none !important; }
+    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 4px; margin-bottom: 18px; border: 1px solid var(--line); border-radius: 11px; background: var(--fog); }
+    .mode-button { border: 0; border-radius: 7px; padding: 10px 8px; color: var(--ink-soft); background: transparent; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .mode-button.active { color: #fff; background: var(--ink); }
+    .location-panel { margin-bottom: 18px; padding: 14px; border: 1px solid #bcd8d4; border-radius: 11px; background: var(--map-pale); }
+    .locate { width: 100%; min-height: 44px; border: 1px solid var(--map); border-radius: 9px; color: var(--map); background: #fff; font-weight: 700; cursor: pointer; }
+    .location-state { display: flex; align-items: start; gap: 8px; margin: 9px 0 0; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+    .location-state::before { content: ''; flex: 0 0 auto; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: #8ca1a9; }
+    .location-state.ready::before { background: var(--map); box-shadow: 0 0 0 4px rgba(31,122,116,.13); }
+    .type-heading { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .type-heading label { margin: 0; }
+    .select-all { border: 0; padding: 3px 0; color: var(--map); background: transparent; font-size: 11px; cursor: pointer; }
+    .institution-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+    .institution-option { display: grid; place-items: center; min-height: 42px; margin: 0; padding: 7px 5px; border: 1px solid var(--line); border-radius: 9px; color: var(--ink-soft); background: #fbfcfc; font-size: 12px; text-align: center; cursor: pointer; }
+    .institution-option:has(input:checked) { border-color: var(--map); color: var(--map); background: var(--map-pale); font-weight: 700; }
+    .institution-option input { position: absolute; opacity: 0; pointer-events: none; }
+    .custom-institution { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; margin-top: 9px; }
+    .custom-institution input { min-width: 0; padding: 9px 10px; font-size: 12px; }
+    .custom-institution button { border: 1px solid var(--map); border-radius: 9px; padding: 0 12px; color: var(--map); background: #fff; font-size: 12px; font-weight: 700; cursor: pointer; }
+    details.advanced { margin-top: 12px; color: var(--ink-soft); font-size: 12px; }
+    details.advanced summary { cursor: pointer; }
+    .field { margin-top: 15px; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    label { display: block; margin-bottom: 7px; font-size: 13px; font-weight: 700; }
+    .optional { color: var(--ink-soft); font-size: 11px; font-weight: 400; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 11px 12px;
+      color: var(--ink); background: #fbfcfc; transition: border-color .18s, box-shadow .18s;
+    }
+    input:hover, select:hover, textarea:hover { border-color: #aebfc6; }
+    input:focus, select:focus, textarea:focus { border-color: var(--map); }
+    .radius-control { display: grid; grid-template-columns: 1fr 78px; gap: 10px; align-items: center; }
+    input[type="range"] { padding: 0; accent-color: var(--map); border: 0; background: transparent; box-shadow: none; }
+    .hint { margin: 7px 0 0; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+    .run {
+      width: 100%; margin-top: 22px; border: 0; border-radius: 10px; padding: 13px 16px;
+      color: #fff; background: var(--ink); font-weight: 700; cursor: pointer;
+      transition: transform .18s, background .18s;
+    }
     .run:hover { transform: translateY(-1px); background: var(--map); }
     .run:disabled { opacity: .55; cursor: wait; transform: none; }
-    .hint { color: var(--muted); font-size: 12px; line-height: 1.55; }
-    .output { overflow: hidden; min-height: 440px; }
-    .output-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
-    .status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted); }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: #9aa8b3; }
-    .dot.running { background: #e9a23b; animation: pulse 1s infinite alternate; }
+    .message { min-height: 18px; margin-top: 13px; color: var(--signal); font-size: 12px; line-height: 1.55; white-space: pre-wrap; }
+    .output { align-self: stretch; min-height: 520px; overflow: hidden; }
+    .output-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+    .status { display: flex; align-items: center; min-width: 0; gap: 9px; color: var(--ink-soft); font-size: 13px; }
+    .status-copy { min-width: 0; }
+    .status-copy strong { display: block; color: var(--ink); font-size: 14px; }
+    .status-copy span { display: block; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dot { flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%; background: #9aa8b3; }
+    .dot.pending, .dot.running { background: #e8a23a; animation: pulse 1s infinite alternate; }
     .dot.completed { background: var(--map); }
     .dot.failed { background: var(--signal); }
     @keyframes pulse { to { opacity: .35; } }
-    .export { border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; background: white; color: var(--ink); cursor: pointer; font-size: 13px; }
-    .export:disabled { opacity: .45; cursor: default; }
+    .export { flex: 0 0 auto; border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; background: #fff; color: var(--ink); cursor: pointer; font-size: 13px; }
+    .export:hover:not(:disabled) { border-color: var(--map); color: var(--map); }
+    .export:disabled { opacity: .42; cursor: default; }
+    .result-meta { display: none; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+    .result-meta.visible { display: grid; }
+    .metric { padding: 13px 16px; background: #f9fbfb; }
+    .metric span { display: block; color: var(--ink-soft); font: 10px Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 5px; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .table-wrap { overflow: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { padding: 12px 14px; text-align: left; color: var(--muted); font: 700 11px/1.2 Consolas, monospace; letter-spacing: .06em; background: #f8fafb; position: sticky; top: 0; }
-    td { padding: 13px 14px; border-top: 1px solid #edf1f3; vertical-align: top; }
-    td:nth-child(1) { font-weight: 700; min-width: 170px; }
-    td:nth-child(3) { min-width: 260px; color: var(--muted); }
-    .source { display: inline-block; padding: 3px 7px; border-radius: 5px; color: var(--map); background: rgba(43,122,120,.1); font: 11px Consolas, monospace; }
-    .empty { display: grid; place-items: center; min-height: 350px; padding: 30px; color: var(--muted); text-align: center; }
+    table { width: 100%; min-width: 820px; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+    th { padding: 11px 12px; text-align: left; color: var(--ink-soft); font: 700 11px/1.2 Consolas, monospace; letter-spacing: .04em; background: #f8fafb; position: sticky; top: 0; }
+    td { min-width: 0; padding: 12px; border-top: 1px solid #edf1f3; vertical-align: top; }
+    td.name { font-weight: 700; }
+    td.address { color: var(--ink-soft); }
+    td.phone, td.email { min-width: 0; white-space: normal; }
+    .contact-value { display: block; max-width: 100%; overflow-wrap: anywhere; word-break: break-word; line-height: 1.55; }
+    .contact-list { display: grid; gap: 6px; }
+    .contact-line { display: grid; grid-template-columns: 28px minmax(0, 1fr); align-items: start; gap: 5px; min-width: 0; }
+    .contact-kind { padding-top: 2px; color: var(--ink-soft); font: 9px/1.5 Consolas, monospace; letter-spacing: .04em; }
+    .contact-link { min-width: 0; color: var(--map); line-height: 1.45; overflow-wrap: anywhere; word-break: break-word; text-decoration-thickness: 1px; text-underline-offset: 2px; }
+    .contact-empty { color: var(--ink-soft); font-size: 11px; }
+    td.distance { white-space: nowrap; font: 700 12px Consolas, monospace; color: var(--map); }
+    td.products { min-width: 0; }
+    .cell-clamp { display: -webkit-box; overflow: hidden; overflow-wrap: anywhere; line-height: 1.55; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+    .name-text { min-height: 20px; }
+    .address-text { cursor: help; text-decoration: underline dotted rgba(82,105,121,.45); text-underline-offset: 3px; }
+    .address-tooltip { position: fixed; z-index: 1000; width: max-content; max-width: min(380px, calc(100vw - 24px)); padding: 9px 11px; border: 1px solid #bcd8d4; border-radius: 8px; color: #fff; background: var(--ink); box-shadow: 0 10px 30px rgba(20,44,62,.2); font-size: 12px; line-height: 1.55; pointer-events: none; }
+    .address-tooltip[hidden] { display: none; }
+    .product-list { display: flex; flex-wrap: wrap; gap: 5px; max-height: 45px; margin-bottom: 7px; overflow: hidden; }
+    .product-tag { display: inline-flex; padding: 3px 7px; border-radius: 999px; color: #315d59; background: var(--map-pale); font-size: 11px; }
+    .product-empty { color: var(--ink-soft); font-size: 12px; }
+    .verified { display: inline-block; margin-left: 5px; color: var(--map); font-size: 10px; }
+    .edit-products { border: 0; padding: 3px 0; color: var(--map); background: transparent; font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+    .source { display: inline-block; margin-top: 5px; padding: 2px 6px; border-radius: 4px; color: var(--map); background: var(--map-pale); font: 10px Consolas, monospace; }
+    .empty { display: grid; place-items: center; min-height: 390px; padding: 32px; color: var(--ink-soft); text-align: center; }
     .empty strong { display: block; margin-bottom: 8px; color: var(--ink); font: 28px Georgia, "Songti SC", serif; }
-    .message { margin-top: 14px; min-height: 18px; color: var(--signal); font-size: 12px; white-space: pre-wrap; }
-    @media (max-width: 800px) { header { align-items: start; } .coordinate { display: none; } .workbench { grid-template-columns: 1fr; } .query { position: static; } }
+    .empty p { margin: 0; max-width: 390px; line-height: 1.7; }
+    .loading-stage { display: grid; place-items: center; min-height: 390px; padding: 34px; text-align: center; }
+    .radar-loader { position: relative; width: 86px; height: 86px; margin: 0 auto 22px; border: 1px solid rgba(31,122,116,.22); border-radius: 50%; }
+    .radar-loader::before, .radar-loader::after { content: ''; position: absolute; inset: 50%; border: 1px solid rgba(31,122,116,.36); border-radius: 50%; transform: translate(-50%, -50%); animation: radar 1.7s ease-out infinite; }
+    .radar-loader::after { animation-delay: .55s; }
+    .radar-core { position: absolute; inset: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--signal); box-shadow: 0 0 0 6px rgba(229,106,74,.15); transform: translate(-50%, -50%); }
+    @keyframes radar { from { width: 12px; height: 12px; opacity: .9; } to { width: 82px; height: 82px; opacity: 0; } }
+    .loading-stage h3 { margin: 0; font: 25px/1.2 Georgia, "Songti SC", serif; }
+    .loading-stage p { max-width: 400px; margin: 9px auto 0; color: var(--ink-soft); font-size: 12px; line-height: 1.65; }
+    .loading-steps { display: flex; justify-content: center; gap: 7px; margin-top: 19px; }
+    .loading-step { width: 34px; height: 4px; overflow: hidden; border-radius: 999px; background: var(--line); }
+    .loading-step.done { background: var(--map); }
+    .loading-step.active::after { content: ''; display: block; width: 100%; height: 100%; background: var(--map); animation: loading-bar 1s ease-in-out infinite alternate; transform-origin: left; }
+    @keyframes loading-bar { from { transform: scaleX(.2); } to { transform: scaleX(1); } }
+    .pagination { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 16px 18px 18px; border-top: 1px solid var(--line); }
+    .page-button { min-width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; padding: 0 9px; color: var(--ink); background: #fff; cursor: pointer; }
+    .page-button:hover:not(:disabled):not(.active) { border-color: var(--map); color: var(--map); }
+    .page-button.active { border-color: var(--ink); color: #fff; background: var(--ink); font-weight: 700; }
+    .page-button:disabled { opacity: .38; cursor: default; }
+    .page-ellipsis { padding: 0 2px; color: var(--ink-soft); }
+    dialog { width: min(560px, calc(100% - 28px)); max-height: min(760px, calc(100vh - 40px)); padding: 0; border: 0; border-radius: 18px; color: var(--ink); background: var(--panel); box-shadow: 0 24px 90px rgba(20,44,62,.28); }
+    dialog::backdrop { background: rgba(20,44,62,.48); backdrop-filter: blur(2px); }
+    .product-editor { padding: 24px; }
+    .editor-head { display: flex; align-items: start; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    .editor-head h2 { margin: 0 0 5px; font: 28px/1 Georgia, "Songti SC", serif; }
+    .editor-head p { margin: 0; color: var(--ink-soft); font-size: 12px; }
+    .close-editor { border: 0; padding: 4px 7px; color: var(--ink-soft); background: transparent; font-size: 22px; cursor: pointer; }
+    .product-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .product-option { display: flex; align-items: center; gap: 7px; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 9px; font-size: 13px; cursor: pointer; }
+    .product-option:has(input:checked) { border-color: var(--map); color: var(--map); background: var(--map-pale); }
+    .product-option input { width: auto; margin: 0; accent-color: var(--map); }
+    .custom-product { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 10px; }
+    .custom-product button { border: 1px solid var(--line); border-radius: 9px; padding: 0 14px; color: var(--map); background: #fff; cursor: pointer; }
+    .verify-line { display: flex; align-items: start; gap: 9px; margin: 17px 0 0; font-weight: 400; line-height: 1.45; }
+    .verify-line input { width: auto; margin-top: 3px; accent-color: var(--map); }
+    .editor-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
+    .editor-actions button { border: 1px solid var(--line); border-radius: 9px; padding: 10px 16px; background: #fff; cursor: pointer; }
+    .editor-actions .save-products { border-color: var(--ink); color: #fff; background: var(--ink); font-weight: 700; }
+    @media (max-width: 900px) {
+      .workbench { grid-template-columns: 320px minmax(0, 1fr); }
+      .field-row { grid-template-columns: 1fr; gap: 0; }
+    }
+    @media (max-width: 720px) {
+      .shell { width: min(100% - 20px, 620px); padding-top: 22px; }
+      .masthead { grid-template-columns: 1fr; }
+      .range-mark { display: none; }
+      .workbench { grid-template-columns: 1fr; }
+      .query, .output { align-self: auto; height: auto; }
+      .query { position: static; }
+      .output-head { align-items: flex-start; }
+      .result-meta { grid-template-columns: 1fr; }
+      .table-wrap { padding: 8px; overflow: visible; }
+      table, tbody, tr, td { display: block; width: 100%; }
+      table { min-width: 0; table-layout: auto; }
+      thead { display: none; }
+      tr { margin-bottom: 9px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+      td { display: grid; grid-template-columns: 76px 1fr; gap: 8px; min-width: 0 !important; padding: 5px 0; border: 0; }
+      td::before { content: attr(data-label); color: var(--ink-soft); font: 10px/1.6 Consolas, monospace; letter-spacing: .04em; }
+      td.name { font-size: 14px; }
+      td.address { color: var(--ink); }
+      .cell-clamp { display: block; overflow: visible; -webkit-line-clamp: unset; }
+      .address-text { cursor: default; text-decoration: none; }
+      .product-list { max-height: none; overflow: visible; }
+      .source { margin-top: 2px; width: fit-content; }
+      dialog { width: 100%; max-width: none; max-height: 88vh; margin: auto 0 0; border-radius: 18px 18px 0 0; }
+      .product-editor { padding: 20px 18px calc(18px + env(safe-area-inset-bottom)); }
+      .product-options { grid-template-columns: repeat(2, 1fr); }
+      .editor-actions { position: sticky; bottom: 0; padding-top: 12px; background: var(--panel); }
+      .editor-actions button { flex: 1; min-height: 44px; }
+      .institution-options { grid-template-columns: repeat(3, 1fr); }
+      .pagination { position: sticky; bottom: 0; flex-wrap: wrap; padding-bottom: calc(14px + env(safe-area-inset-bottom)); background: rgba(255,255,255,.96); }
+      .page-button { min-width: 40px; height: 40px; }
+      .run { min-height: 48px; }
+    }
     @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
   </style>
 </head>
 <body>
   <main class="shell">
-    <header>
-      <div><div class="eyebrow">Urban intelligence / POI console</div><h1>城市机构采集台</h1><p class="subtitle">一次检索，汇合三家地图数据源。</p></div>
-      <div class="coordinate">31.2304° N<br>121.4737° E</div>
+    <header class="masthead">
+      <div>
+        <div class="eyebrow">Radius search / POI console</div>
+        <h1>周边机构采集台</h1>
+        <p class="subtitle">筛选周边医疗健康机构，核实产品需求，建立合作线索。</p>
+      </div>
+      <div class="range-mark" aria-hidden="true">
+        <i class="ring"></i><i class="ring"></i><i class="ring"></i><i class="pin"></i>
+        <span class="radius-readout" id="radiusReadout">3.0 KM</span>
+      </div>
     </header>
+
     <section class="workbench">
       <form class="card query" id="taskForm">
-        <h2 class="card-title">采集条件</h2>
-        <label for="city">城市</label><input id="city" type="text" value="上海市" required>
-        <label for="keywords">关键词</label><input id="keywords" type="text" value="口腔诊所,牙科" required>
-        <p class="hint">多个关键词请用中文或英文逗号分隔。</p>
-        <label>地图来源</label>
-        <div class="providers">
-          <label class="provider"><input type="checkbox" name="provider" value="amap" checked> 高德地图</label>
-          <label class="provider"><input type="checkbox" name="provider" value="baidu"> 百度地图</label>
-          <label class="provider"><input type="checkbox" name="provider" value="tencent"> 腾讯地图</label>
+        <h2 class="card-title">检索范围</h2>
+        <p class="card-note">选择机构类型和距离即可查询；使用当前位置时无需填写地址。</p>
+        <div class="config-notice" id="configNotice" hidden>地图查询尚未启用：请先申请高德“Web 服务”Key，在服务器 <code>.env</code> 中填写 <code>AMAP_KEY</code> 后重启服务。<a href="https://console.amap.com/dev/key/app" target="_blank" rel="noreferrer">前往高德控制台</a></div>
+
+        <div class="mode-switch" aria-label="检索中心">
+          <button class="mode-button active" type="button" data-mode="location">使用当前位置</button>
+          <button class="mode-button" type="button" data-mode="address">输入目的地</button>
         </div>
-        <label for="pages">每个关键词采集页数</label><input id="pages" type="number" value="2" min="1" max="20">
-        <button class="run" id="runButton" type="submit">开始采集</button>
-        <div class="message" id="message" role="alert"></div>
+
+        <div class="location-panel" id="locationPanel">
+          <button class="locate" id="locateButton" type="button">获取我的位置</button>
+          <p class="location-state" id="locationState">点击查询时也会自动请求定位权限；系统只保存本次检索中心。</p>
+        </div>
+
+        <div id="addressPanel" hidden>
+          <div class="field">
+            <label for="centerName">目的地名称或地址</label>
+            <input id="centerName" name="center_name" type="text" maxlength="255" placeholder="例如：北京协和医院" autocomplete="organization">
+          </div>
+          <div class="field">
+            <label for="centerAddress">详细地址 <span class="optional">同名地点较多时填写</span></label>
+            <input id="centerAddress" name="center_address" type="text" maxlength="500" placeholder="例如：北京市东城区帅府园一号" autocomplete="street-address">
+          </div>
+          <div class="field">
+            <label for="city">城市 <span class="optional">用于提高定位准确度</span></label>
+            <input id="city" name="city" type="text" maxlength="100" placeholder="例如：北京市">
+          </div>
+        </div>
+
+        <div class="field">
+          <div class="type-heading"><label>查找哪些机构</label><button class="select-all" id="selectAllTypes" type="button">取消全选</button></div>
+          <div class="institution-options" id="institutionOptions">
+            <label class="institution-option"><input type="checkbox" value="药店" checked><span>药店</span></label>
+            <label class="institution-option"><input type="checkbox" value="药房" checked><span>药房</span></label>
+            <label class="institution-option"><input type="checkbox" value="药企" checked><span>药企</span></label>
+            <label class="institution-option"><input type="checkbox" value="医疗器械" checked><span>医疗器械</span></label>
+            <label class="institution-option"><input type="checkbox" value="护理院" checked><span>护理院</span></label>
+            <label class="institution-option"><input type="checkbox" value="养老院" checked><span>养老院</span></label>
+            <label class="institution-option"><input type="checkbox" value="医院" checked><span>医院</span></label>
+            <label class="institution-option"><input type="checkbox" value="诊所" checked><span>诊所</span></label>
+            <label class="institution-option"><input type="checkbox" value="康复中心" checked><span>康复中心</span></label>
+          </div>
+          <div class="custom-institution">
+            <input id="customInstitutionType" type="text" maxlength="50" placeholder="输入其他机构类型">
+            <button id="addInstitutionType" type="button">添加</button>
+          </div>
+          <details class="advanced" id="advancedSearch"><summary>高级：使用高德分类码</summary><div class="field"><input id="typesCode" name="types_code" type="text" maxlength="20" placeholder="填写后将替代上方机构类型" inputmode="numeric"></div></details>
+        </div>
+        <div class="field">
+          <label for="radiusNumber">检索半径</label>
+          <div class="radius-control">
+            <input id="radiusRange" type="range" min="0.5" max="20" step="0.5" value="3" aria-label="检索半径滑块">
+            <input id="radiusNumber" name="radius_km" type="number" min="0.1" max="50" step="0.5" value="3" aria-label="检索半径，单位公里">
+          </div>
+          <p class="hint">结果按距离从近到远排列。建议先查 3 公里，结果不足时再扩大。</p>
+        </div>
+        <button class="run" id="runButton" type="submit">定位并查找附近机构</button>
+        <div class="message" id="message" role="alert" aria-live="assertive"></div>
       </form>
-      <section class="card output">
+
+      <section class="card output" aria-labelledby="resultHeading">
         <div class="output-head">
-          <div class="status"><span class="dot" id="dot"></span><span id="statusText">等待创建任务</span></div>
-          <button class="export" id="exportButton" disabled>导出 Excel</button>
+          <div class="status" aria-live="polite">
+            <span class="dot" id="dot"></span>
+            <div class="status-copy"><strong id="resultHeading">等待检索</strong><span id="statusDetail">填写左侧条件后开始</span></div>
+          </div>
+          <button class="export" id="exportButton" type="button" disabled>导出 Excel</button>
         </div>
-        <div class="table-wrap" id="resultArea"><div class="empty"><div><strong>还没有采集结果</strong>填写左侧条件，创建第一条采集任务。</div></div></div>
+        <div class="result-meta" id="resultMeta">
+          <div class="metric"><span>中心坐标</span><strong id="centerMetric">—</strong></div>
+          <div class="metric"><span>检索半径</span><strong id="radiusMetric">—</strong></div>
+          <div class="metric"><span>结果数量</span><strong id="countMetric">—</strong></div>
+        </div>
+        <div class="table-wrap" id="resultArea">
+          <div class="empty"><div><strong>从一个目的地开始</strong><p>系统会先定位目的地，再按距离查找周边同类机构。</p></div></div>
+        </div>
+        <nav class="pagination" id="pagination" aria-label="结果分页" hidden></nav>
       </section>
     </section>
   </main>
+
+  <dialog id="productDialog" aria-labelledby="productDialogTitle">
+    <div class="product-editor">
+      <div class="editor-head">
+        <div><h2 id="productDialogTitle">核实经营产品</h2><p id="productInstitution"></p></div>
+        <button class="close-editor" id="closeProductDialog" type="button" aria-label="关闭">×</button>
+      </div>
+      <div class="product-options" id="productOptions"></div>
+      <div class="custom-product">
+        <input id="customProduct" type="text" maxlength="50" placeholder="其他产品，例如：胰岛素针">
+        <button id="addCustomProduct" type="button">加入</button>
+      </div>
+      <label class="verify-line"><input id="productsVerified" type="checkbox" checked><span>我已通过电话、到店或公开信息核实以上产品</span></label>
+      <div class="field">
+        <label for="productNote">核实备注 <span class="optional">选填</span></label>
+        <textarea id="productNote" rows="3" maxlength="1000" placeholder="例如：2026-09-17 电话确认，部分型号需预订"></textarea>
+      </div>
+      <div class="editor-actions">
+        <button id="cancelProducts" type="button">取消</button>
+        <button class="save-products" id="saveProducts" type="button">保存产品信息</button>
+      </div>
+    </div>
+  </dialog>
+  <div class="address-tooltip" id="addressTooltip" role="tooltip" hidden></div>
+
   <script>
     const form = document.querySelector('#taskForm');
     const runButton = document.querySelector('#runButton');
     const exportButton = document.querySelector('#exportButton');
     const message = document.querySelector('#message');
-    const statusText = document.querySelector('#statusText');
+    const resultHeading = document.querySelector('#resultHeading');
+    const statusDetail = document.querySelector('#statusDetail');
     const dot = document.querySelector('#dot');
     const resultArea = document.querySelector('#resultArea');
-    let activeTaskId = null, timer = null;
-    const labels = { pending: '任务排队中', running: '正在采集', completed: '采集完成', failed: '采集失败' };
+    const resultMeta = document.querySelector('#resultMeta');
+    const radiusRange = document.querySelector('#radiusRange');
+    const radiusNumber = document.querySelector('#radiusNumber');
+    const radiusReadout = document.querySelector('#radiusReadout');
+    const productDialog = document.querySelector('#productDialog');
+    const productOptions = document.querySelector('#productOptions');
+    const locationPanel = document.querySelector('#locationPanel');
+    const addressPanel = document.querySelector('#addressPanel');
+    const locateButton = document.querySelector('#locateButton');
+    const locationState = document.querySelector('#locationState');
+    const institutionOptions = document.querySelector('#institutionOptions');
+    const selectAllTypes = document.querySelector('#selectAllTypes');
+    const customInstitutionType = document.querySelector('#customInstitutionType');
+    const addInstitutionType = document.querySelector('#addInstitutionType');
+    const configNotice = document.querySelector('#configNotice');
+    const addressTooltip = document.querySelector('#addressTooltip');
+    const pagination = document.querySelector('#pagination');
+    const commonProducts = ['体脂秤', '血糖仪', '血氧仪', '血压计', '雾化器', '制氧机', '助听器', '轮椅', '护理用品'];
+    let activeTaskId = null;
+    let timer = null;
+    let pollCount = 0;
+    let currentItems = [];
+    let editingPoiId = null;
+    let searchMode = 'location';
+    let currentPosition = null;
+    let currentLoadingStep = 0;
+    let currentTask = null;
+    let currentPage = 1;
+    let currentTotal = 0;
+    let currentCacheHit = false;
+    const pageSize = 10;
+
+    const statusLabels = { pending: '任务已创建', running: '正在采集', completed: '采集完成', failed: '采集失败' };
     const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
-    function setStatus(status, total = 0) {
-      dot.className = `dot ${status || ''}`;
-      statusText.textContent = `${labels[status] || '等待创建任务'}${status === 'completed' ? ` · ${total} 条` : ''}`;
+
+    async function loadSystemStatus() {
+      try {
+        const status = await api('/api/system/status');
+        configNotice.hidden = Boolean(status.maps?.amap);
+      } catch (_) {
+        configNotice.hidden = true;
+      }
     }
+
+    function syncRadius(value) {
+      const radius = Math.min(50, Math.max(.1, Number(value) || 3));
+      radiusNumber.value = radius;
+      radiusRange.value = Math.min(20, radius);
+      radiusReadout.textContent = `${radius.toFixed(1)} KM`;
+    }
+    radiusRange.addEventListener('input', event => syncRadius(event.target.value));
+    radiusNumber.addEventListener('input', event => syncRadius(event.target.value));
+
+    function setSearchMode(mode) {
+      searchMode = mode;
+      document.querySelectorAll('.mode-button').forEach(button => button.classList.toggle('active', button.dataset.mode === mode));
+      locationPanel.hidden = mode !== 'location';
+      addressPanel.hidden = mode !== 'address';
+      runButton.textContent = mode === 'location' ? '定位并查找附近机构' : '查找目的地附近机构';
+      message.textContent = '';
+    }
+    document.querySelectorAll('.mode-button').forEach(button => button.addEventListener('click', () => setSearchMode(button.dataset.mode)));
+
+    function selectedInstitutionTypes() {
+      return [...institutionOptions.querySelectorAll('input:checked')].map(input => input.value);
+    }
+
+    function updateSelectAllLabel() {
+      const inputs = [...institutionOptions.querySelectorAll('input')];
+      selectAllTypes.textContent = inputs.every(input => input.checked) ? '取消全选' : '选择全部医疗机构';
+    }
+    institutionOptions.addEventListener('change', updateSelectAllLabel);
+    selectAllTypes.addEventListener('click', () => {
+      const inputs = [...institutionOptions.querySelectorAll('input')];
+      const shouldSelect = !inputs.every(input => input.checked);
+      inputs.forEach(input => { input.checked = shouldSelect; });
+      updateSelectAllLabel();
+    });
+
+    function addCustomInstitutionType() {
+      const value = customInstitutionType.value.trim();
+      if (!value) return;
+      const inputs = [...institutionOptions.querySelectorAll('input')];
+      const existing = inputs.find(input => input.value.toLocaleLowerCase() === value.toLocaleLowerCase());
+      if (existing) {
+        existing.checked = true;
+      } else if (inputs.filter(input => input.checked).length >= 20) {
+        message.textContent = '一次最多检索 20 种机构，请先取消不需要的类型。';
+        return;
+      } else {
+        institutionOptions.insertAdjacentHTML('beforeend', `<label class="institution-option"><input type="checkbox" value="${escapeHtml(value)}" checked><span>${escapeHtml(value)}</span></label>`);
+      }
+      customInstitutionType.value = '';
+      message.textContent = '';
+      updateSelectAllLabel();
+    }
+    addInstitutionType.addEventListener('click', addCustomInstitutionType);
+    customInstitutionType.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        addCustomInstitutionType();
+      }
+    });
+
+    function locationErrorMessage(error) {
+      if (!window.isSecureContext) return '手机浏览器需要通过 HTTPS 打开页面才能使用定位，请改用“输入目的地”。';
+      if (error?.code === 1) return '定位权限被拒绝，请在浏览器设置中允许定位，或改用“输入目的地”。';
+      if (error?.code === 2) return '暂时无法获取位置，请打开手机定位服务后重试。';
+      if (error?.code === 3) return '获取位置超时，请移到信号较好的位置后重试。';
+      return '当前浏览器不支持定位，请改用“输入目的地”。';
+    }
+
+    function acquireLocation() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('当前浏览器不支持定位，请改用“输入目的地”。'));
+          return;
+        }
+        locationState.classList.remove('ready');
+        locationState.textContent = '正在获取位置，请保持定位服务开启…';
+        navigator.geolocation.getCurrentPosition(async position => {
+          currentPosition = {
+            longitude: position.coords.longitude,
+            latitude: position.coords.latitude,
+            accuracy: position.coords.accuracy,
+            name: ''
+          };
+          locationState.classList.add('ready');
+          locationState.textContent = `定位成功，正在获取位置名称 · 精度约 ${Math.round(position.coords.accuracy)} 米`;
+          try {
+            const location = await api(`/api/location/reverse?longitude=${encodeURIComponent(position.coords.longitude)}&latitude=${encodeURIComponent(position.coords.latitude)}`);
+            currentPosition.name = location.name || [location.province, location.city, location.district, location.township].filter(Boolean).join('');
+            if (!currentPosition.name) throw new Error('地图服务没有返回位置名称');
+            locationState.textContent = `定位位置：${currentPosition.name} · 精度约 ${Math.round(position.coords.accuracy)} 米`;
+          } catch (error) {
+            currentPosition = null;
+            locationState.classList.remove('ready');
+            const text = `已获取坐标，但无法确认准确位置名称：${error.message}`;
+            locationState.textContent = text;
+            reject(new Error(text));
+            return;
+          }
+          resolve(currentPosition);
+        }, error => {
+          const text = locationErrorMessage(error);
+          locationState.textContent = text;
+          reject(new Error(text));
+        }, {enableHighAccuracy: true, timeout: 12000, maximumAge: 60000});
+      });
+    }
+
+    locateButton.addEventListener('click', async () => {
+      locateButton.disabled = true;
+      message.textContent = '';
+      try {
+        await acquireLocation();
+        locateButton.textContent = '重新获取位置';
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        locateButton.disabled = false;
+      }
+    });
+
+    function normalizeError(detail) {
+      if (typeof detail === 'string') return detail;
+      if (Array.isArray(detail)) return detail.map(item => `${item.loc?.at(-1) || '参数'}：${item.msg}`).join('\n');
+      return '请求失败，请检查服务配置。';
+    }
+
     async function api(url, options) {
       const response = await fetch(url, options);
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : '请求失败，请检查服务配置。');
+      if (!response.ok) throw new Error(normalizeError(data.detail));
       return data;
     }
-    function renderRows(items) {
-      if (!items.length) { resultArea.innerHTML = '<div class="empty"><div><strong>没有匹配结果</strong>可以换一个关键词或增加采集页数。</div></div>'; return; }
-      resultArea.innerHTML = `<table><thead><tr><th>机构名称</th><th>来源</th><th>地址</th><th>电话</th></tr></thead><tbody>${items.map(item => `<tr><td>${escapeHtml(item.name)}</td><td><span class="source">${escapeHtml(item.provider)}</span></td><td>${escapeHtml(item.address || '—')}</td><td>${escapeHtml(item.phone || '—')}</td></tr>`).join('')}</tbody></table>`;
+
+    function setStatus(status, detail = '') {
+      dot.className = `dot ${status || ''}`;
+      resultHeading.textContent = statusLabels[status] || '等待检索';
+      statusDetail.textContent = detail || (status === 'pending' ? '等待采集进程启动' : '');
     }
+
+    function showLoading(title, detail, step) {
+      currentLoadingStep = step;
+      pagination.hidden = true;
+      resultArea.innerHTML = `<div class="loading-stage" role="status" aria-live="polite"><div><div class="radar-loader" aria-hidden="true"><span class="radar-core"></span></div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(detail)}</p><div class="loading-steps" aria-hidden="true">${[1, 2, 3].map(index => `<span class="loading-step ${index < step ? 'done' : index === step ? 'active' : ''}"></span>`).join('')}</div></div></div>`;
+    }
+
+    function renderRows(items) {
+      currentItems = items;
+      if (!items.length) {
+        resultArea.innerHTML = '<div class="empty"><div><strong>范围内没有匹配机构</strong><p>可以换一个关键词、检查分类码，或扩大检索半径。</p></div></div>';
+        return;
+      }
+      resultArea.innerHTML = `<table><colgroup><col style="width:20%"><col style="width:15%"><col style="width:25%"><col style="width:17%"><col style="width:16%"><col style="width:7%"></colgroup><thead><tr><th>机构</th><th>分类</th><th>地址</th><th>产品</th><th>联系方式</th><th>距离</th></tr></thead><tbody>${items.map(item => `
+        <tr>
+          <td class="name" data-label="机构"><span class="cell-clamp name-text">${escapeHtml(item.name)}</span><span class="source">${escapeHtml(item.provider)}</span></td>
+          <td data-label="分类"><span class="cell-clamp">${escapeHtml(item.category || '—')}</span></td>
+          <td class="address" data-label="地址">${item.address ? `<span class="cell-clamp address-text" tabindex="0" data-full-address="${escapeHtml(item.address)}" aria-describedby="addressTooltip">${escapeHtml(item.address)}</span>` : '—'}</td>
+          <td class="products" data-label="产品"><div class="product-list">${item.products.length
+            ? item.products.map(product => `<span class="product-tag">${escapeHtml(product)}</span>`).join('')
+            : '<span class="product-empty">尚未标记</span>'}</div><button class="edit-products" type="button" data-poi-id="${item.id}">标记产品</button>${item.products_verified ? '<span class="verified">已核实</span>' : ''}</td>
+          <td class="phone" data-label="联系方式">${renderContacts(item)}</td>
+          <td class="distance" data-label="距离">${item.distance_m == null ? '—' : `${Number(item.distance_m).toLocaleString()} m`}</td>
+        </tr>`).join('')}</tbody></table>`;
+      bindAddressTooltips();
+    }
+
+    function splitContacts(value) {
+      return String(value || '').split(/[;,，；]/).map(part => part.trim()).filter(Boolean);
+    }
+
+    function websiteHref(value) {
+      if (!value) return '';
+      try {
+        const url = new URL(/^https?:\/\//i.test(value) ? value : `https://${value}`);
+        return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+      } catch (_) {
+        return '';
+      }
+    }
+
+    function renderContacts(item) {
+      const lines = [];
+      const sourceNames = { amap: '高德地图', baidu: '百度地图', tencent: '腾讯地图', official_website: '机构官网' };
+      const sourceTitle = field => {
+        const source = item.contact_sources?.[field];
+        return source ? ` title="来源：${escapeHtml(sourceNames[source] || source)}"` : '';
+      };
+      splitContacts(item.phone).forEach(phone => {
+        lines.push(`<div class="contact-line"${sourceTitle('phone')}><span class="contact-kind">电话</span><a class="contact-link" href="tel:${encodeURIComponent(phone)}">${escapeHtml(phone)}</a></div>`);
+      });
+      splitContacts(item.email).forEach(email => {
+        lines.push(`<div class="contact-line"${sourceTitle('email')}><span class="contact-kind">邮箱</span><a class="contact-link" href="mailto:${encodeURIComponent(email)}">${escapeHtml(email)}</a></div>`);
+      });
+      const website = websiteHref(item.website);
+      if (website) {
+        let label = item.website;
+        try { label = new URL(website).hostname; } catch (_) {}
+        lines.push(`<div class="contact-line"${sourceTitle('website')}><span class="contact-kind">网站</span><a class="contact-link" href="${escapeHtml(website)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a></div>`);
+      }
+      return lines.length ? `<div class="contact-list">${lines.join('')}</div>` : '<span class="contact-empty">暂无公开联系方式</span>';
+    }
+
+    function paginationSequence(page, totalPages) {
+      const pages = [...new Set([1, totalPages, page - 1, page, page + 1].filter(value => value >= 1 && value <= totalPages))].sort((a, b) => a - b);
+      const sequence = [];
+      pages.forEach((value, index) => {
+        if (index && value - pages[index - 1] > 1) sequence.push(null);
+        sequence.push(value);
+      });
+      return sequence;
+    }
+
+    function renderPagination(page, total) {
+      currentPage = page;
+      currentTotal = total;
+      const totalPages = Math.max(1, Math.ceil(total / pageSize));
+      if (totalPages <= 1) {
+        pagination.hidden = true;
+        pagination.innerHTML = '';
+        return;
+      }
+      const pageButtons = paginationSequence(page, totalPages).map(value => value == null
+        ? '<span class="page-ellipsis" aria-hidden="true">…</span>'
+        : `<button class="page-button ${value === page ? 'active' : ''}" type="button" data-page="${value}" ${value === page ? 'aria-current="page"' : ''}>${value}</button>`
+      ).join('');
+      pagination.innerHTML = `<button class="page-button" type="button" data-page="${page - 1}" ${page === 1 ? 'disabled' : ''}>上一页</button>${pageButtons}<button class="page-button" type="button" data-page="${page + 1}" ${page === totalPages ? 'disabled' : ''}>下一页</button>`;
+      pagination.hidden = false;
+    }
+
+    async function loadTaskPage(page) {
+      const data = await api(`/api/tasks/${activeTaskId}/results?page=${page}&page_size=${pageSize}`);
+      renderRows(data.items);
+      renderPagination(data.page, data.total);
+      if (currentTask) renderMeta(currentTask, data.total);
+      return data;
+    }
+
+    pagination.addEventListener('click', async event => {
+      const button = event.target.closest('[data-page]');
+      if (!button || button.disabled) return;
+      const page = Number(button.dataset.page);
+      showLoading(`正在载入第 ${page} 页`, '继续按距离从近到远展示合作机构。', 3);
+      try {
+        const data = await loadTaskPage(page);
+        const totalPages = Math.max(1, Math.ceil(data.total / pageSize));
+        statusDetail.textContent = `${currentTask?.center_name || currentTask?.city || '检索中心'} · 共 ${data.total} 条 · 第 ${data.page}/${totalPages} 页`;
+        document.querySelector('.output').scrollIntoView({behavior: 'smooth', block: 'start'});
+      } catch (error) {
+        resultArea.innerHTML = `<div class="empty"><div><strong>分页读取失败</strong><p>${escapeHtml(error.message)}</p></div></div>`;
+        message.textContent = error.message;
+      }
+    });
+
+    function positionAddressTooltip(target) {
+      const rect = target.getBoundingClientRect();
+      const tooltipRect = addressTooltip.getBoundingClientRect();
+      const left = Math.min(window.innerWidth - tooltipRect.width - 12, Math.max(12, rect.left));
+      const above = rect.top - tooltipRect.height - 9;
+      const top = above >= 8 ? above : Math.min(window.innerHeight - tooltipRect.height - 8, rect.bottom + 9);
+      addressTooltip.style.left = `${left}px`;
+      addressTooltip.style.top = `${top}px`;
+    }
+
+    function showAddressTooltip(target) {
+      if (window.matchMedia('(max-width: 720px)').matches) return;
+      addressTooltip.textContent = target.dataset.fullAddress;
+      addressTooltip.hidden = false;
+      positionAddressTooltip(target);
+    }
+
+    function hideAddressTooltip() {
+      addressTooltip.hidden = true;
+    }
+
+    function bindAddressTooltips() {
+      resultArea.querySelectorAll('.address-text').forEach(target => {
+        target.addEventListener('pointerenter', () => showAddressTooltip(target));
+        target.addEventListener('pointerleave', hideAddressTooltip);
+        target.addEventListener('focus', () => showAddressTooltip(target));
+        target.addEventListener('blur', hideAddressTooltip);
+      });
+    }
+    document.querySelector('.table-wrap').addEventListener('scroll', hideAddressTooltip, {passive: true});
+    window.addEventListener('resize', hideAddressTooltip);
+
+    function renderProductOptions(selected) {
+      const names = [...new Set([...commonProducts, ...selected])];
+      productOptions.innerHTML = names.map(name => `<label class="product-option"><input type="checkbox" value="${escapeHtml(name)}" ${selected.includes(name) ? 'checked' : ''}><span>${escapeHtml(name)}</span></label>`).join('');
+    }
+
+    function openProductEditor(poiId) {
+      const item = currentItems.find(row => row.id === poiId);
+      if (!item) return;
+      editingPoiId = poiId;
+      document.querySelector('#productInstitution').textContent = `${item.name} · ${item.address || '地址未提供'}`;
+      document.querySelector('#productsVerified').checked = item.products_verified;
+      document.querySelector('#productNote').value = item.product_note || '';
+      document.querySelector('#customProduct').value = '';
+      renderProductOptions(item.products);
+      productDialog.showModal();
+    }
+
+    resultArea.addEventListener('click', event => {
+      const button = event.target.closest('.edit-products');
+      if (button) openProductEditor(Number(button.dataset.poiId));
+    });
+
+    function closeProductEditor() {
+      productDialog.close();
+      editingPoiId = null;
+    }
+    document.querySelector('#closeProductDialog').addEventListener('click', closeProductEditor);
+    document.querySelector('#cancelProducts').addEventListener('click', closeProductEditor);
+
+    document.querySelector('#addCustomProduct').addEventListener('click', () => {
+      const input = document.querySelector('#customProduct');
+      const value = input.value.trim();
+      if (!value) return;
+      const selected = [...productOptions.querySelectorAll('input:checked')].map(input => input.value);
+      renderProductOptions([...selected, value]);
+      input.value = '';
+    });
+
+    document.querySelector('#saveProducts').addEventListener('click', async () => {
+      if (!editingPoiId) return;
+      const saveButton = document.querySelector('#saveProducts');
+      saveButton.disabled = true;
+      try {
+        const updated = await api(`/api/pois/${editingPoiId}/products`, {
+          method: 'PATCH',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            products: [...productOptions.querySelectorAll('input:checked')].map(input => input.value),
+            verified: document.querySelector('#productsVerified').checked,
+            note: document.querySelector('#productNote').value
+          })
+        });
+        currentItems = currentItems.map(item => item.id === updated.id ? updated : item);
+        renderRows(currentItems);
+        statusDetail.textContent = `${updated.name} · 产品信息已保存`;
+        closeProductEditor();
+      } catch (error) {
+        message.textContent = error.message;
+      } finally {
+        saveButton.disabled = false;
+      }
+    });
+
+    function renderMeta(task, count) {
+      resultMeta.classList.add('visible');
+      document.querySelector('#centerMetric').textContent = task.center_lng == null ? '—' : `${task.center_lng}, ${task.center_lat}`;
+      document.querySelector('#radiusMetric').textContent = task.radius_m == null ? '—' : `${Number(task.radius_m).toLocaleString()} 米`;
+      document.querySelector('#countMetric').textContent = `${count} 条`;
+    }
+
+    async function finishTask(task, cacheHit = false) {
+      currentTask = task;
+      currentCacheHit = cacheHit;
+      if (task.status === 'failed') {
+        currentItems = [];
+        pagination.hidden = true;
+        resultArea.innerHTML = `<div class="empty"><div><strong>地图查询失败</strong><p>${escapeHtml(task.error_message || '没有收到地图服务结果，请稍后重试。')}</p></div></div>`;
+        renderMeta(task, 0);
+        exportButton.disabled = true;
+        runButton.disabled = false;
+        message.textContent = task.error_message || '';
+        statusDetail.textContent = '请查看错误原因后重试';
+        return;
+      }
+      showLoading('正在整理结果', '合并重复机构，并按距离从近到远排列。', 3);
+      const data = await loadTaskPage(1);
+      exportButton.disabled = false;
+      runButton.disabled = false;
+      message.textContent = task.error_message || '';
+      const totalPages = Math.max(1, Math.ceil(data.total / pageSize));
+      statusDetail.textContent = `${currentCacheHit ? '复用近期结果 · ' : ''}${task.center_name || task.city} · 共 ${data.total} 条 · 第 1/${totalPages} 页`;
+    }
+
     async function pollTask() {
+      pollCount += 1;
       try {
         const task = await api(`/api/tasks/${activeTaskId}`);
-        setStatus(task.status, task.total);
-        if (task.status === 'completed' || task.status === 'failed') {
-          clearInterval(timer); runButton.disabled = false; message.textContent = task.error_message || '';
-          const results = await api(`/api/tasks/${activeTaskId}/results?page_size=500`);
-          renderRows(results.items); exportButton.disabled = results.total === 0;
+        setStatus(task.status, task.status === 'running' ? '正在请求地图数据并清洗结果' : '');
+        if (task.status === 'running' && currentLoadingStep !== 2) {
+          showLoading('正在采集附近机构', '系统正在逐类连接地图服务，机构类型越多，需要的时间越长。', 2);
         }
-      } catch (error) { clearInterval(timer); runButton.disabled = false; message.textContent = error.message; }
+        if (task.status === 'completed' || task.status === 'failed') {
+          clearInterval(timer);
+          await finishTask(task, task.cache_hit);
+        } else if (pollCount >= 150) {
+          clearInterval(timer);
+          runButton.disabled = false;
+          setStatus('failed', '等待时间超过 3 分钟');
+          message.textContent = '任务仍在后台运行，可以稍后刷新任务状态。';
+        }
+      } catch (error) {
+        clearInterval(timer);
+        runButton.disabled = false;
+        setStatus('failed', '无法读取任务状态');
+        message.textContent = error.message;
+      }
     }
+
     form.addEventListener('submit', async event => {
-      event.preventDefault(); clearInterval(timer); message.textContent = ''; exportButton.disabled = true; runButton.disabled = true;
-      const providers = [...document.querySelectorAll('input[name="provider"]:checked')].map(input => input.value);
-      if (!providers.length) { message.textContent = '请至少选择一个地图来源。'; runButton.disabled = false; return; }
-      const keywords = document.querySelector('#keywords').value.split(/[,，]/).map(v => v.trim()).filter(Boolean);
+      event.preventDefault();
+      clearInterval(timer);
+      pollCount = 0;
+      message.textContent = '';
+      const keywords = selectedInstitutionTypes();
+      const typesCode = document.querySelector('#typesCode').value.trim();
+      if (!typesCode && !keywords.length) {
+        message.textContent = '请至少选择一种机构，或填写高德分类码。';
+        return;
+      }
+      exportButton.disabled = true;
+      pagination.hidden = true;
+      resultMeta.classList.remove('visible');
+      currentTask = null;
+      currentTotal = 0;
+      runButton.disabled = true;
+      setStatus('pending');
+      showLoading(
+        searchMode === 'location' ? '正在获取当前位置' : '正在定位目的地',
+        searchMode === 'location' ? '请允许浏览器使用定位；定位信息只用于本次周边查询。' : '系统正在解析你填写的目的地。',
+        1
+      );
+
       try {
-        const task = await api('/api/tasks', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ city: document.querySelector('#city').value.trim(), keywords, providers, pages: Number(document.querySelector('#pages').value) }) });
-        activeTaskId = task.id; setStatus(task.status);
-        resultArea.innerHTML = '<div class="empty"><div><strong>正在穿行城市网格</strong>结果会在采集完成后自动出现。</div></div>';
-        timer = setInterval(pollTask, 1500); pollTask();
-      } catch (error) { message.textContent = error.message; runButton.disabled = false; }
+        if (searchMode === 'location' && !currentPosition) await acquireLocation();
+        const centerName = document.querySelector('#centerName').value.trim();
+        const centerAddress = document.querySelector('#centerAddress').value.trim();
+        if (searchMode === 'address' && !centerName && !centerAddress) {
+          throw new Error('请输入目的地名称或详细地址。');
+        }
+        const payload = {
+          center_name: searchMode === 'address' ? centerName : (currentPosition.name || '当前位置'),
+          center_address: searchMode === 'address' ? centerAddress : '',
+          center_lng: searchMode === 'location' ? currentPosition.longitude : null,
+          center_lat: searchMode === 'location' ? currentPosition.latitude : null,
+          city: searchMode === 'address' ? document.querySelector('#city').value.trim() : '',
+          keyword: keywords[0] || '',
+          keywords,
+          types_code: typesCode,
+          radius_km: Number(radiusNumber.value),
+          providers: ['amap'],
+          pages: keywords.length > 4 ? 3 : 6
+        };
+        showLoading('正在连接地图服务', `将在 ${Number(radiusNumber.value)} 公里内查找 ${typesCode ? '指定分类' : `${keywords.length} 类机构`}。`, 2);
+        const task = await api('/api/tasks', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(payload)
+        });
+        activeTaskId = task.id;
+        if (task.cache_hit && task.status === 'completed') {
+          setStatus('completed', '正在载入近期采集结果');
+          await finishTask(task, true);
+        } else {
+          setStatus(task.status);
+          timer = setInterval(pollTask, 1200);
+          pollTask();
+        }
+      } catch (error) {
+        runButton.disabled = false;
+        setStatus('failed', '任务没有创建');
+        message.textContent = error.message;
+        resultArea.innerHTML = `<div class="empty"><div><strong>本次查询未完成</strong><p>${escapeHtml(error.message)}</p></div></div>`;
+      }
     });
-    exportButton.addEventListener('click', () => { if (activeTaskId) window.location.href = `/api/tasks/${activeTaskId}/export`; });
+
+    exportButton.addEventListener('click', () => {
+      if (activeTaskId) window.location.href = `/api/tasks/${activeTaskId}/export`;
+    });
+    loadSystemStatus();
   </script>
 </body>
 </html>
